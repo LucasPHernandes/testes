@@ -1,0 +1,1102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-file-text-fill"></i> Relatórios do Sistema</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Abas de Relatórios -->
+<ul class="nav nav-tabs mb-4" id="relatoriosTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="diario-tab" data-bs-toggle="tab" data-bs-target="#diario" type="button" role="tab">
+            <i class="bi bi-calendar-day"></i> Relatório Diário
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab">
+            <i class="bi bi-bar-chart"></i> Relatório Geral
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="financeiro-tab" data-bs-toggle="tab" data-bs-target="#financeiro" type="button" role="tab">
+            <i class="bi bi-cash-stack"></i> Relatório Financeiro
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="valores-tab" data-bs-toggle="tab" data-bs-target="#valores" type="button" role="tab">
+            <i class="bi bi-tags"></i> Valores por Refeição
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="bloqueados-tab" data-bs-toggle="tab" data-bs-target="#bloqueados" type="button" role="tab">
+            <i class="bi bi-lock-fill"></i> Alunos Bloqueados
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- RELATÓRIO DIÁRIO -->
+    <div class="tab-pane fade show active" id="diario" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-day"></i> Relatório Diário</h5>
+                <div>
+                    <button class="btn btn-sm btn-light" onclick="atualizarRelatorioDiario()">
+                        <i class="bi bi-arrow-repeat"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Cards de Resumo Diário -->
+<div class="row mb-4 g-3">
+    <div class="col-12 col-sm-4">
+        <div class="card text-white bg-primary h-100 shadow-sm">
+            <div class="card-body d-flex flex-column align-items-center align-items-sm-start">
+                <h6 class="card-title text-uppercase small fw-light opacity-75 mb-1">
+                    <i class="bi bi-calendar3 me-1"></i>Data
+                </h6>
+                <div class="d-flex align-items-center w-100">
+                    <h3 class="mb-0 fw-bold me-2" id="diario-data">--/--/----</h3>
+                    <button class="btn btn-sm btn-light" onclick="abrirSeletorData()" title="Selecionar outra data">
+                        <i class="bi bi-calendar-range"></i>
+                    </button>
+                </div>
+                <small class="text-white-50 mt-1" id="data-selecionada-info">Hoje</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-4">
+        <div class="card text-white bg-success h-100 shadow-sm">
+            <div class="card-body d-flex flex-column align-items-center align-items-sm-start">
+                <h6 class="card-title text-uppercase small fw-light opacity-75 mb-1">
+                    <i class="bi bi-check-circle me-1"></i>Presentes
+                </h6>
+                <h3 class="mb-0 fw-bold" id="diario-presentes">0</h3>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-4">
+        <div class="card text-white bg-danger h-100 shadow-sm">
+            <div class="card-body d-flex flex-column align-items-center align-items-sm-start">
+                <h6 class="card-title text-uppercase small fw-light opacity-75 mb-1">
+                    <i class="bi bi-x-circle me-1"></i>Faltas
+                </h6>
+                <h3 class="mb-0 fw-bold" id="diario-faltas">0</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+                <!-- Gráfico e Detalhamento -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="grafico-diario" style="max-height: 300px;"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6>Resumo do Dia</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td>Total de Alunos:</td>
+                                        <td id="diario-total-alunos" class="text-end fw-bold">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Alunos Bloqueados:</td>
+                                        <td id="diario-bloqueados" class="text-end fw-bold">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Total Débitos:</td>
+                                        <td id="diario-total-debitos" class="text-end fw-bold">R$ 0,00</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalhamento por Refeição -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="mb-3">Detalhamento por Refeição</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Refeição</th>
+                                        <th class="text-center">Presentes</th>
+                                        <th class="text-center">Faltas</th>
+                                        <th class="text-end">Valor Unitário</th>
+                                        <th class="text-end">Total Faltas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detalhamento-refeicoes">
+                                    <tr>
+                                        <td colspan="5" class="text-center">Carregando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  <!-- Modal de Seleção de Data -->
+<div class="modal fade" id="modalSelecionarData" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-calendar-range"></i> Selecionar Data</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="data-relatorio" class="form-label">Escolha a data:</label>
+                    <input type="date" class="form-control" id="data-relatorio">
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="selecionarDataHoje()">
+                        <i class="bi bi-calendar-check"></i> Hoje
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="carregarRelatorioPorData()">
+                    <i class="bi bi-search"></i> Gerar Relatório
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- RELATÓRIO GERAL -->
+    <div class="tab-pane fade" id="geral" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Relatório Geral</h5>
+            </div>
+            <div class="card-body">
+                <!-- Cards de Resumo Geral -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card text-white bg-primary">
+                            <div class="card-body">
+                                <h6 class="card-title">Total Alunos</h6>
+                                <h3 id="geral-total-alunos">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-danger">
+                            <div class="card-body">
+                                <h6 class="card-title">Total Faltas</h6>
+                                <h3 id="geral-total-faltas">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body">
+                                <h6 class="card-title">Total Débitos</h6>
+                                <h3 id="geral-total-debitos">R$ 0,00</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Média Faltas/Aluno</h6>
+                                <h4 id="geral-media-faltas">0.0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Alunos com Débito</h6>
+                                <h4 id="geral-alunos-debito">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body">
+                                <h6 class="card-title">Bloqueados</h6>
+                                <h4 id="geral-bloqueados">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning">
+                            <div class="card-body">
+                                <h6 class="card-title">Em Risco</h6>
+                                <h4 id="geral-em-risco">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Top 10 - Alunos com Mais Faltas</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" style="max-height: 300px;">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Aluno</th>
+                                                <th>Curso</th>
+                                                <th class="text-center">Faltas</th>
+                                                <th class="text-end">Débito</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="top-faltas"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Distribuição por Refeição</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Refeição</th>
+                                                <th class="text-center">Total Faltas</th>
+                                                <th class="text-end">Valor Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="distribuicao-refeicoes"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RELATÓRIO FINANCEIRO -->
+    <div class="tab-pane fade" id="financeiro" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Relatório Financeiro</h5>
+            </div>
+            <div class="card-body">
+                <!-- Cards Financeiros -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card text-white bg-success">
+                            <div class="card-body">
+                                <h6 class="card-title">Total Débitos</h6>
+                                <h3 id="finan-total-debitos">R$ 0,00</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-info">
+                            <div class="card-body">
+                                <h6 class="card-title">Saldo da situação de risco</h6>
+                                <h3 id="finan-total-pagamentos">R$ 0,00</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-primary">
+                            <div class="card-body">
+                                <h6 class="card-title">Saldo a Receber</h6>
+                                <h3 id="finan-saldo">R$ 0,00</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalhamento por Refeição -->
+                <h6 class="mb-3">Projeção de Valores para Todas as Faltas</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Refeição</th>
+                                <th class="text-center">Quantidade de Faltas</th>
+                                <th class="text-end">Valor Unitário</th>
+                                <th class="text-end">Total em Débitos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="finan-detalhamento-refeicoes"></tbody>
+                        <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="3">TOTAL</th>
+                                <th class="text-end" id="finan-total-geral">R$ 0,00</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Alunos com Maiores Débitos -->
+                <h6 class="mb-3">Alunos com Maiores Débitos</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Matrícula</th>
+                                <th>Aluno</th>
+                                <th>Curso</th>
+                                <th class="text-center">Total Faltas</th>
+                                <th class="text-end">Débito</th>
+                            </tr>
+                        </thead>
+                        <tbody id="finan-maiores-debitos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VALORES POR REFEIÇÃO -->
+    <div class="tab-pane fade" id="valores" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-tags"></i> Valores por Refeição</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Valores Configurados</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>Lanche da Manhã:</th>
+                                        <td class="text-end" id="valor-lanche-manha">R$ 0,00</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Almoço:</th>
+                                        <td class="text-end" id="valor-almoco">R$ 0,00</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Lanche da Tarde:</th>
+                                        <td class="text-end" id="valor-lanche-tarde">R$ 0,00</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Jantar:</th>
+                                        <td class="text-end" id="valor-janta">R$ 0,00</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Resumo de Uso (Projeção)</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Refeição</th>
+                                            <th class="text-center">Faltas</th>
+                                            <th class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="resumo-uso-valores"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico de Distribuição -->
+                <div class="row">
+                    <div class="col-12">
+                        <canvas id="grafico-valores" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ALUNOS BLOQUEADOS -->
+    <div class="tab-pane fade" id="bloqueados" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-lock-fill"></i> Alunos Bloqueados</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Nome</th>
+                                <th>Curso</th>
+                                <th class="text-center">Total Faltas</th>
+                                <th class="text-end">Débito</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-bloqueados">
+                            <tr>
+                                <td colspan="6" class="text-center">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chartDiario = null;
+let chartValores = null;
+let dataRelatorioSelecionada = null;
+
+$(document).ready(function() {
+    console.log('Relatórios carregado!');
+    
+    // Carregar dados iniciais
+    carregarRelatorioDiario();
+    carregarRelatorioGeral();
+    carregarRelatorioFinanceiro();
+    carregarValoresRefeicao();
+    carregarBloqueados();
+    
+    // Recarregar ao mudar de aba
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+        const target = $(e.target).attr('data-bs-target');
+        console.log('Aba ativada:', target);
+        
+        if (target === '#diario') {
+            carregarRelatorioDiario(dataRelatorioSelecionada);
+        } else if (target === '#geral') {
+            carregarRelatorioGeral();
+        } else if (target === '#financeiro') {
+            carregarRelatorioFinanceiro();
+        } else if (target === '#valores') {
+            carregarValoresRefeicao();
+        } else if (target === '#bloqueados') {
+            carregarBloqueados();
+        }
+    });
+});
+
+// ==================== FUNÇÕES AUXILIARES ====================
+function formatarMoeda(valor) {
+    return 'R$ ' + parseFloat(valor || 0).toFixed(2).replace('.', ',');
+}
+
+function dateHoje() {
+    const hoje = new Date();
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+}
+
+function mostrarAlerta(tipo, mensagem) {
+    const alertDiv = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    $('#alert-container').html(alertDiv);
+    
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+
+// ==================== SELEÇÃO DE DATA ====================
+function abrirSeletorData() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    $('#data-relatorio').val(`${ano}-${mes}-${dia}`);
+    $('#modalSelecionarData').modal('show');
+}
+
+function selecionarDataHoje() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    $('#data-relatorio').val(`${ano}-${mes}-${dia}`);
+}
+
+function carregarRelatorioPorData() {
+    const dataSelecionada = $('#data-relatorio').val();
+    if (!dataSelecionada) {
+        mostrarAlerta('warning', 'Selecione uma data!');
+        return;
+    }
+    
+    console.log('Data selecionada:', dataSelecionada);
+    
+    const partes = dataSelecionada.split('-');
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    
+    $('#modalSelecionarData').modal('hide');
+    $('#diario-data').text(dataFormatada);
+    dataRelatorioSelecionada = dataSelecionada;
+    
+    const hoje = dateHoje();
+    if (dataFormatada === hoje) {
+        $('#data-selecionada-info').text('Hoje');
+    } else {
+        $('#data-selecionada-info').text('Data selecionada');
+    }
+    
+    // Chamar a função que carrega os dados para a data selecionada
+    carregarRelatorioDiario(dataSelecionada);
+}
+
+// ==================== RELATÓRIO DIÁRIO ====================
+function carregarRelatorioDiario(data = null) {
+    console.log('Carregando relatório diário...');
+    
+    let url = '/api/relatorios/diario';
+    if (data) {
+        url += `?data=${data}`;
+        console.log('URL com data:', url);
+    }
+    
+    $.ajax({
+        url: url,
+        type: 'GET',
+        success: function(response) {
+            console.log('Dados diários recebidos:', response);
+            
+            // ATUALIZAR TODOS OS ELEMENTOS
+            $('#diario-data').text(response.data || dateHoje());
+            $('#diario-presentes').text(response.presentes || 0);
+            $('#diario-faltas').text(response.faltas || 0);
+            $('#diario-valor').text(formatarMoeda(response.valor_total_faltas || 0));
+            
+            // ===== RESUMO DO DIA =====
+            $('#diario-total-alunos').text(response.total_alunos || 0);
+            $('#diario-bloqueados').text(response.bloqueados || 0);
+            $('#diario-total-debitos').text(formatarMoeda(response.total_debitos || 0));
+            
+            console.log('Total alunos:', response.total_alunos);
+            console.log('Bloqueados:', response.bloqueados);
+            console.log('Total débitos:', response.total_debitos);
+            
+            // Verificar se a data é hoje
+            const hoje = dateHoje();
+            if (response.data === hoje) {
+                $('#data-selecionada-info').text('Hoje');
+            } else {
+                $('#data-selecionada-info').text('Data selecionada');
+            }
+            
+            // Atualizar gráfico
+            atualizarGraficoDiario(response.presentes || 0, response.faltas || 0);
+            
+            // Atualizar detalhamento por refeição
+            atualizarDetalhamentoRefeicoes(response.refeicoes || {});
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar relatório diário:', error);
+            console.error('Status:', status);
+            console.error('Resposta:', xhr.responseText);
+            mostrarAlerta('danger', 'Erro ao carregar relatório diário');
+            
+            // Valores padrão em caso de erro
+            $('#diario-data').text(dateHoje());
+            $('#diario-presentes').text('0');
+            $('#diario-faltas').text('0');
+            $('#diario-valor').text('R$ 0,00');
+            $('#diario-total-alunos').text('0');
+            $('#diario-bloqueados').text('0');
+            $('#diario-total-debitos').text('R$ 0,00');
+        }
+    });
+}
+
+function atualizarGraficoDiario(presentes, faltas) {
+    const ctx = document.getElementById('grafico-diario').getContext('2d');
+    
+    if (chartDiario) {
+        chartDiario.destroy();
+    }
+    
+    if (presentes === 0 && faltas === 0) {
+        chartDiario = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Sem dados'],
+                datasets: [{
+                    data: [1],
+                    backgroundColor: ['#6c757d']
+                }]
+            }
+        });
+    } else {
+        chartDiario = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Presentes', 'Faltas'],
+                datasets: [{
+                    data: [presentes, faltas],
+                    backgroundColor: ['#28a745', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function atualizarDetalhamentoRefeicoes(refeicoes) {
+    const tbody = $('#detalhamento-refeicoes');
+    tbody.empty();
+    
+    if (!refeicoes || Object.keys(refeicoes).length === 0) {
+        tbody.append('<tr><td colspan="5" class="text-center">Nenhum registro para esta data</td></tr>');
+        return;
+    }
+    
+    const ordemRefeicoes = ['Lanche da Manhã', 'Almoço', 'Lanche da Tarde', 'Jantar'];
+    const dadosNormalizados = {};
+    
+    for (const [nome, dados] of Object.entries(refeicoes)) {
+        let nomeNormalizado = nome;
+        const nomeLower = nome.toLowerCase();
+        
+        if (nomeLower.includes('manhã') || nomeLower.includes('manha')) {
+            nomeNormalizado = 'Lanche da Manhã';
+        } else if (nomeLower.includes('almoço') || nomeLower.includes('almoco')) {
+            nomeNormalizado = 'Almoço';
+        } else if (nomeLower.includes('tarde')) {
+            nomeNormalizado = 'Lanche da Tarde';
+        } else if (nomeLower.includes('jantar')) {
+            nomeNormalizado = 'Jantar';
+        }
+        
+        if (!dadosNormalizados[nomeNormalizado]) {
+            dadosNormalizados[nomeNormalizado] = { presentes: 0, faltas: 0, valor: 0 };
+        }
+        
+        dadosNormalizados[nomeNormalizado].presentes += dados.presentes || 0;
+        dadosNormalizados[nomeNormalizado].faltas += dados.faltas || 0;
+        dadosNormalizados[nomeNormalizado].valor += dados.valor || 0;
+    }
+    
+    ordemRefeicoes.forEach(function(nomeRefeicao) {
+        const dados = dadosNormalizados[nomeRefeicao] || { presentes: 0, faltas: 0, valor: 0 };
+        const valorUnitario = dados.faltas > 0 ? (dados.valor / dados.faltas) : 0;
+        
+        tbody.append(`
+            <tr>
+                <td>${nomeRefeicao}</td>
+                <td class="text-center">${dados.presentes}</td>
+                <td class="text-center">${dados.faltas}</td>
+                <td class="text-end">${formatarMoeda(valorUnitario)}</td>
+                <td class="text-end">${formatarMoeda(dados.valor)}</td>
+            </tr>
+        `);
+    });
+}
+
+function atualizarRelatorioDiario() {
+    carregarRelatorioDiario(dataRelatorioSelecionada);
+}
+
+// ==================== RELATÓRIO GERAL ====================
+function carregarRelatorioGeral() {
+    console.log('Carregando relatório geral...');
+    
+    $.ajax({
+        url: '/api/relatorios/geral',
+        type: 'GET',
+        success: function(data) {
+            console.log('Dados gerais:', data);
+            
+            $('#geral-total-alunos').text(data.total_alunos);
+            $('#geral-total-faltas').text(data.total_faltas);
+            $('#geral-total-debitos').text(formatarMoeda(data.total_debitos));
+            $('#geral-media-faltas').text(data.media_faltas.toFixed(2));
+            $('#geral-alunos-debito').text(data.alunos_com_debito);
+            $('#geral-bloqueados').text(data.bloqueados);
+            $('#geral-em-risco').text(data.em_risco || 0);
+            
+            atualizarTopFaltas(data.top_faltas || []);
+            atualizarDistribuicaoRefeicoes(data.refeicoes || {});
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar relatório geral:', error);
+            mostrarAlerta('danger', 'Erro ao carregar relatório geral');
+        }
+    });
+}
+
+function atualizarTopFaltas(topFaltas) {
+    const tbody = $('#top-faltas');
+    tbody.empty();
+    
+    if (topFaltas.length === 0) {
+        tbody.append('<tr><td colspan="5" class="text-center">Nenhum dado disponível</td></tr>');
+        return;
+    }
+    
+    topFaltas.forEach(function(item, index) {
+        tbody.append(`
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.nome}</td>
+                <td>${item.curso || '-'}</td>
+                <td class="text-center">${item.faltas}</td>
+                <td class="text-end">${formatarMoeda(item.debito || 0)}</td>
+            </tr>
+        `);
+    });
+}
+
+function atualizarDistribuicaoRefeicoes(refeicoes) {
+    const tbody = $('#distribuicao-refeicoes');
+    tbody.empty();
+    
+    if (Object.keys(refeicoes).length === 0) {
+        tbody.append('<tr><td colspan="3" class="text-center">Nenhum dado disponível</td></tr>');
+        return;
+    }
+    
+    for (const [nome, dados] of Object.entries(refeicoes)) {
+        tbody.append(`
+            <tr>
+                <td>${nome}</td>
+                <td class="text-center">${dados.total || 0}</td>
+                <td class="text-end">${formatarMoeda(dados.valor_total || 0)}</td>
+            </tr>
+        `);
+    }
+}
+
+// ==================== RELATÓRIO FINANCEIRO ====================
+function carregarRelatorioFinanceiro() {
+    console.log('Carregando relatório financeiro...');
+    
+    $.ajax({
+        url: '/api/relatorios/geral',
+        type: 'GET',
+        success: function(data) {
+            const totalDebitos = data.total_debitos || 0;
+            $('#finan-total-debitos').text(formatarMoeda(totalDebitos));
+            $('#finan-saldo').text(formatarMoeda(totalDebitos));
+        }
+    });
+    
+    $.ajax({
+        url: '/api/alunos',
+        type: 'GET',
+        success: function(alunos) {
+            const comDebito = alunos.filter(a => a.debito > 0);
+            const tbodyDebitos = $('#finan-maiores-debitos');
+            tbodyDebitos.empty();
+            
+            if (comDebito.length === 0) {
+                tbodyDebitos.append('<tr><td colspan="6" class="text-center">Nenhum aluno com débito</td></tr>');
+            } else {
+                comDebito.sort((a, b) => b.debito - a.debito);
+                comDebito.forEach(function(aluno, index) {
+                    tbodyDebitos.append(`
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${aluno.matricula}</td>
+                            <td>${aluno.nome}</td>
+                            <td>${aluno.curso || '-'}</td>
+                            <td class="text-center">${aluno.total_faltas || 0}</td>
+                            <td class="text-end">${formatarMoeda(aluno.debito)}</td>
+                        </tr>
+                    `);
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar alunos para financeiro:', error);
+        }
+    });
+    
+    $.ajax({
+        url: '/api/configuracoes',
+        type: 'GET',
+        success: function(config) {
+            if (config.valor_almoco) {
+                $('#finan-valor-refeicao').text(formatarMoeda(parseFloat(config.valor_almoco)));
+            }
+        }
+    });
+    
+    $.ajax({
+        url: '/api/relatorios/valores',
+        type: 'GET',
+        success: function(data) {
+            console.log('Dados de valores por refeição:', data);
+            
+            const tbody = $('#finan-detalhamento-refeicoes');
+            tbody.empty();
+            
+            const uso = data.uso || {};
+            let totalGeral = 0;
+            
+            for (let ref in uso) {
+                totalGeral += uso[ref].total || 0;
+            }
+            
+            function normalizarNome(ref) {
+                const nome = ref.toLowerCase();
+                if (nome.includes('manhã') || nome.includes('manha')) return 'Lanche da Manhã';
+                if (nome.includes('almoço') || nome.includes('almoco')) return 'Almoço';
+                if (nome.includes('tarde')) return 'Lanche da Tarde';
+                if (nome.includes('jantar')) return 'Jantar';
+                return ref;
+            }
+            
+            const ordemCorreta = ['Lanche da Manhã', 'Almoço', 'Lanche da Tarde', 'Jantar'];
+            const dadosNormalizados = {};
+            
+            for (let ref in uso) {
+                const nomeNormalizado = normalizarNome(ref);
+                if (!dadosNormalizados[nomeNormalizado]) {
+                    dadosNormalizados[nomeNormalizado] = { faltas: 0, total: 0 };
+                }
+                dadosNormalizados[nomeNormalizado].faltas += uso[ref].faltas || 0;
+                dadosNormalizados[nomeNormalizado].total += uso[ref].total || 0;
+            }
+            
+            ordemCorreta.forEach(function(nomeRefeicao) {
+                const dados = dadosNormalizados[nomeRefeicao] || { faltas: 0, total: 0 };
+                const valorUnitario = dados.faltas > 0 ? (dados.total / dados.faltas) : 0;
+                
+                tbody.append(`
+                    <tr>
+                        <td>${nomeRefeicao}</td>
+                        <td class="text-center">${dados.faltas}</td>
+                        <td class="text-end">${formatarMoeda(valorUnitario)}</td>
+                        <td class="text-end">${formatarMoeda(dados.total)}</td>
+                    </tr>
+                `);
+            });
+            
+            $('#finan-total-geral').text(formatarMoeda(totalGeral));
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar valores por refeição:', error);
+            $('#finan-detalhamento-refeicoes').html('<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados</td></tr>');
+        }
+    });
+}
+
+// ==================== VALORES POR REFEIÇÃO ====================
+function carregarValoresRefeicao() {
+    console.log('Carregando valores por refeição...');
+    
+    $.ajax({
+        url: '/api/relatorios/valores',
+        type: 'GET',
+        success: function(data) {
+            console.log('Valores:', data);
+            
+            $('#valor-lanche-manha').text(formatarMoeda(data.valores['Lanche da Manhã'] || 0));
+            $('#valor-almoco').text(formatarMoeda(data.valores['Almoço'] || 0));
+            $('#valor-lanche-tarde').text(formatarMoeda(data.valores['Lanche da Tarde'] || 0));
+            $('#valor-janta').text(formatarMoeda(data.valores['Jantar'] || 0));
+            
+            atualizarResumoUsoValores(data.uso || {});
+            atualizarGraficoValores(data.uso || {});
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar valores:', error);
+        }
+    });
+}
+
+function atualizarResumoUsoValores(uso) {
+    const tbody = $('#resumo-uso-valores');
+    tbody.empty();
+    
+    const refeicoes = ['Lanche da manhã', 'Almoço', 'Lanche da tarde', 'Jantar'];
+    
+    refeicoes.forEach(function(refeicao) {
+        const dados = uso[refeicao] || { faltas: 0, total: 0 };
+        tbody.append(`
+            <tr>
+                <td>${refeicao}</td>
+                <td class="text-center">${dados.faltas}</td>
+                <td class="text-end">${formatarMoeda(dados.total)}</td>
+            </tr>
+        `);
+    });
+}
+
+function atualizarGraficoValores(uso) {
+    const ctx = document.getElementById('grafico-valores').getContext('2d');
+    
+    if (chartValores) {
+        chartValores.destroy();
+    }
+    
+    const labels = [];
+    const dados = [];
+    const cores = ['#007bff', '#28a745', '#ffc107', '#dc3545'];
+    
+    for (const [refeicao, valores] of Object.entries(uso)) {
+        labels.push(refeicao);
+        dados.push(valores.total || 0);
+    }
+    
+    chartValores = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total em Débitos por Refeição',
+                data: dados,
+                backgroundColor: cores.slice(0, dados.length),
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toFixed(2);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'R$ ' + context.raw.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ==================== ALUNOS BLOQUEADOS ====================
+function carregarBloqueados() {
+    console.log('Carregando alunos bloqueados...');
+    
+    $.ajax({
+        url: '/api/relatorios/bloqueados',
+        type: 'GET',
+        success: function(data) {
+            console.log('Bloqueados:', data);
+            
+            const tbody = $('#tabela-bloqueados');
+            tbody.empty();
+            
+            if (data.length === 0) {
+                tbody.append('<tr><td colspan="6" class="text-center">Nenhum aluno bloqueado</td></tr>');
+                return;
+            }
+            
+            data.forEach(function(aluno) {
+                tbody.append(`
+                    <tr>
+                        <td>${aluno.matricula}</td>
+                        <td>${aluno.nome}</td>
+                        <td>${aluno.curso || '-'}</td>
+                        <td class="text-center">${aluno.total_faltas}</td>
+                        <td class="text-end">${formatarMoeda(aluno.debito)}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-success" onclick="desbloquearAluno('${aluno.id}', '${aluno.nome}')">
+                                <i class="bi bi-unlock-fill"></i> Desbloquear
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar bloqueados:', error);
+            mostrarAlerta('danger', 'Erro ao carregar alunos bloqueados');
+        }
+    });
+}
+
+function desbloquearAluno(id, nome) {
+    const motivo = prompt(`Motivo do desbloqueio para ${nome}:`);
+    if (motivo === null) return;
+    
+    if (!motivo.trim()) {
+        mostrarAlerta('warning', 'Motivo não pode estar vazio!');
+        return;
+    }
+    
+    $.ajax({
+        url: `/api/alunos/${id}/desbloquear`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ motivo: motivo }),
+        success: function(response) {
+            mostrarAlerta('success', `Aluno ${nome} desbloqueado!`);
+            carregarRelatorioDiario(dataRelatorioSelecionada);
+            carregarRelatorioGeral();
+            carregarRelatorioFinanceiro();
+            carregarBloqueados();
+        },
+        error: function() {
+            mostrarAlerta('danger', 'Erro ao desbloquear aluno');
+        }
+    });
+}
+</script>
+{% endblock %}

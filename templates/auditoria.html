@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-journal-text"></i> Registro de Logs</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <label for="filtro-tipo" class="form-label">Tipo de Log</label>
+        <select class="form-select" id="filtro-tipo">
+            <option value="todos">Todos</option>
+            <option value="sucesso">Sucesso</option>
+            <option value="erro">Erro</option>
+            <option value="alerta">Alerta</option>
+            <option value="info">Informação</option>
+            <option value="pagamento">Pagamento</option>
+            <option value="desbloqueio">Desbloqueio</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label for="filtro-limite" class="form-label">Quantidade</label>
+        <select class="form-select" id="filtro-limite">
+            <option value="50">Últimos 50</option>
+            <option value="100" selected>Últimos 100</option>
+            <option value="200">Últimos 200</option>
+            <option value="500">Últimos 500</option>
+        </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+        <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
+            <i class="bi bi-search"></i> Aplicar
+        </button>
+        <button class="btn btn-success" onclick="exportarLogs()">
+            <i class="bi bi-download"></i> Exportar
+        </button>
+    </div>
+</div>
+
+<!-- Tabela de Logs -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Registros de Auditoria</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive" style="max-height: 600px;">
+                    <table class="table table-sm table-hover" id="tabela-logs">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                                <th>Tipo</th>
+                                <th>Detalhes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-body">
+                            <tr>
+                                <td colspan="5" class="text-center">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas de Auditoria -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Estatísticas de Auditoria</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6>Total de Logs</h6>
+                                <h3 id="stats-total">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>Sucessos</h6>
+                                <h3 id="stats-sucesso">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h6>Erros</h6>
+                                <h3 id="stats-erro">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning">
+                            <div class="card-body text-center">
+                                <h6>Alertas</h6>
+                                <h3 id="stats-alerta">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function carregarLogs() {
+    const tipo = $('#filtro-tipo').val();
+    const limite = $('#filtro-limite').val();
+    
+    $.get(`/api/auditoria?tipo=${tipo}&limite=${limite}`, function(data) {
+        const tbody = $('#logs-body');
+        tbody.empty();
+        
+        if (data.length === 0) {
+            tbody.append('<tr><td colspan="5" class="text-center">Nenhum log encontrado</td></tr>');
+            return;
+        }
+        
+        let stats = {
+            total: data.length,
+            sucesso: 0,
+            erro: 0,
+            alerta: 0
+        };
+        
+        data.forEach(function(log) {
+            // Atualizar stats
+            if (log.tipo === 'sucesso') stats.sucesso++;
+            else if (log.tipo === 'erro') stats.erro++;
+            else if (log.tipo === 'alerta') stats.alerta++;
+            
+            // Determinar classe da linha
+            let rowClass = '';
+            if (log.tipo === 'erro') rowClass = 'table-danger';
+            else if (log.tipo === 'sucesso') rowClass = 'table-success';
+            else if (log.tipo === 'alerta') rowClass = 'table-warning';
+            else if (log.tipo === 'pagamento') rowClass = 'table-info';
+            else if (log.tipo === 'desbloqueio') rowClass = 'table-primary';
+            
+            tbody.append(`
+                <tr class="${rowClass}">
+                    <td>${log.timestamp}</td>
+                    <td>${log.usuario}</td>
+                    <td>${log.acao}</td>
+                    <td><span class="badge bg-${log.tipo === 'erro' ? 'danger' : 
+                                               log.tipo === 'sucesso' ? 'success' :
+                                               log.tipo === 'alerta' ? 'warning' :
+                                               log.tipo === 'pagamento' ? 'info' : 'secondary'}">
+                        ${log.tipo}
+                    </span></td>
+                    <td>${log.detalhes || '-'}</td>
+                </tr>
+            `);
+        });
+        
+        // Atualizar estatísticas
+        $('#stats-total').text(stats.total);
+        $('#stats-sucesso').text(stats.sucesso);
+        $('#stats-erro').text(stats.erro);
+        $('#stats-alerta').text(stats.alerta);
+    });
+}
+
+function aplicarFiltros() {
+    carregarLogs();
+}
+
+function exportarLogs() {
+    const tipo = $('#filtro-tipo').val();
+    const limite = $('#filtro-limite').val();
+    
+    $.get(`/api/auditoria?tipo=${tipo}&limite=${limite}`, function(data) {
+        let conteudo = "SISTEMA DE AUDITORIA - REFEITÓRIO UNIVERSITÁRIO\n";
+        conteudo += "=".repeat(80) + "\n\n";
+        
+        data.forEach(function(log) {
+            conteudo += `[${log.timestamp}] ${log.usuario} - ${log.acao}\n`;
+            if (log.detalhes) {
+                conteudo += `  Detalhes: ${log.detalhes}\n`;
+            }
+            conteudo += "-".repeat(80) + "\n";
+        });
+        
+        // Criar e baixar arquivo
+        const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `auditoria_${new Date().toISOString().slice(0,10)}.txt`;
+        link.click();
+    });
+}
+
+$(document).ready(function() {
+    carregarLogs();
+    
+    // Auto refresh a cada 30 segundos
+    setInterval(carregarLogs, 30000);
+});
+</script>
+{% endblock %}

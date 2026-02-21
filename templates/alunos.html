@@ -1,0 +1,833 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-people-fill"></i> Gerenciar Alunos</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="busca-aluno" placeholder="Buscar por nome ou matrícula...">
+            <button class="btn btn-outline-secondary" type="button" onclick="limparBusca()">Limpar</button>
+        </div>
+    </div>
+    
+    <div class="col-md-2">
+        <select class="form-select" id="filtro-status">
+            <option value="todos">Todos os alunos</option>
+            <option value="ativos">Apenas ativos</option>
+            <option value="bloqueados">Apenas bloqueados</option>
+            <option value="debito">Com débito pendente</option>
+            <option value="risco">Em risco</option>
+        </select>
+    </div>
+    
+    <div class="col-md-2">
+        <input type="date" class="form-control" id="filtro-data-inicio" 
+               placeholder="Data inicial" 
+               title="Filtrar alunos com última falta a partir desta data">
+        <small class="text-muted">Início</small>
+    </div>
+    
+    <div class="col-md-2">
+        <input type="date" class="form-control" id="filtro-data-fim" 
+               placeholder="Data final"
+               title="Filtrar alunos com última falta até esta data">
+        <small class="text-muted">Fim</small>
+    </div>
+    
+    <div class="col-md-3 text-end">
+        <button class="btn btn-outline-primary me-2" onclick="aplicarFiltros()" 
+                title="Aplicar todos os filtros selecionados">
+            <i class="bi bi-funnel"></i> Filtrar
+        </button>
+        <button class="btn btn-success" onclick="abrirModalPagamento()"
+                title="Quitar débito de um aluno">
+            <i class="bi bi-cash-stack"></i> Quitar Débito
+        </button>
+        <button class="btn btn-primary" onclick="carregarAlunos()"
+                title="Recarregar lista de alunos">
+            <i class="bi bi-arrow-repeat"></i> Atualizar
+        </button>
+    </div>
+</div>
+
+<!-- Texto explicativo dos filtros de data -->
+<div class="row mb-3">
+    <div class="col-12">
+        <small class="text-muted">
+            <i class="bi bi-info-circle"></i> 
+            Os campos de data filtram os alunos pela <strong>data da última falta</strong>. 
+            Preencha ambos para filtrar por um período específico, ou apenas um deles para filtrar a partir de/até uma data.
+        </small>
+    </div>
+</div>
+
+<!-- Cards de Resumo -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h6 class="card-title">Total Alunos</h6>
+                <h3 id="resumo-total">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <h6 class="card-title">Bloqueados</h6>
+                <h3 id="resumo-bloqueados">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h6 class="card-title">Com Débito</h6>
+                <h3 id="resumo-debito">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h6 class="card-title">Em Risco</h6>
+                <h3 id="resumo-risco">0</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Alunos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Lista de Alunos</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tabela-alunos">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Nome</th>
+                                <th>Curso</th>
+                                <th class="text-center">Total Faltas</th>
+                                <th class="text-center">Última Falta</th>
+                                <th class="text-end">Débito</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alunos-body">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Carregando...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Histórico do Aluno -->
+<div class="modal fade" id="modalHistorico" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Histórico do Aluno</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="info-aluno" class="alert alert-info mb-3"></div>
+                
+                <!-- Últimas Faltas (Débitos) -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Faltas Pendentes</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="info-faltas-pendentes" class="row">
+                                    <div class="col-md-12 text-center">
+                                        Carregando...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Barra de progresso de faltas -->
+                <div class="mb-3">
+                    <label class="form-label">Progresso de Faltas:</label>
+                    <div class="progress" style="height: 25px;">
+                        <div id="progresso-faltas" class="progress-bar" role="progressbar" style="width: 0%;">0/0</div>
+                    </div>
+                </div>
+                
+                <ul class="nav nav-tabs" id="historicoTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="refeicoes-tab" data-bs-toggle="tab" data-bs-target="#refeicoes" type="button" role="tab">Todas as Refeições</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pagamentos-tab" data-bs-toggle="tab" data-bs-target="#pagamentos" type="button" role="tab">Histórico de Pagamentos</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content mt-3">
+                    <div class="tab-pane active" id="refeicoes" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Refeição</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historico-refeicoes"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="pagamentos" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Valor</th>
+                                        <th>Faltas Quitadas</th>
+                                        <th>Motivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historico-pagamentos"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success btn-lg" onclick="registrarPagamentoModal()" id="btn-pagar-modal">
+                    <i class="bi bi-cash-stack"></i> QUITAR DÉBITO E DESBLOQUEAR
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Pagamento -->
+<div class="modal fade" id="modalPagamento" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-cash-stack"></i> Quitar Débito e Desbloquear Aluno</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formPagamento">
+                    <div class="mb-3">
+                        <label for="pagamento-aluno" class="form-label">Aluno</label>
+                        <select class="form-select" id="pagamento-aluno" required>
+                            <option value="">Selecione um aluno...</option>
+                        </select>
+                    </div>
+                    
+                    <div id="info-debito-pendente" class="alert alert-warning mb-3">
+                        Selecione um aluno para ver o débito
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pagamento-valor" class="form-label">Valor a Pagar (R$)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="pagamento-valor" step="0.01" min="0.01" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pagamento-motivo" class="form-label">Observação (opcional)</label>
+                        <textarea class="form-control" id="pagamento-motivo" rows="2" placeholder="Motivo do pagamento..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info" id="info-confirmacao">
+                        <i class="bi bi-info-circle-fill"></i> 
+                        Ao confirmar o pagamento, o aluno será DESBLOQUEADO e todas as faltas serão zeradas.
+                    </div>
+                    
+                    <div class="alert alert-success" id="info-valor-refeicao" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-lg" onclick="salvarPagamento()">
+                    <i class="bi bi-check-circle"></i> CONFIRMAR PAGAMENTO E DESBLOQUEAR
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let alunoSelecionado = null;
+let todosAlunos = [];
+let todosAlunosOriginal = []; // Cópia para filtros
+let maxFaltasConfig = 3;
+let valorRefeicaoConfig = 5.00;
+
+$(document).ready(function() {
+    console.log('Página de alunos carregada!');
+    carregarConfiguracoes();
+    carregarAlunos();
+    
+    // Eventos de filtro
+    $('#busca-aluno').on('keyup', function() {
+        aplicarFiltros();
+    });
+    
+    $('#filtro-status').on('change', function() {
+        aplicarFiltros();
+    });
+    
+    // Evento de seleção de aluno no modal de pagamento
+    $('#pagamento-aluno').change(function() {
+        const alunoId = $(this).val();
+        if (alunoId) {
+            const aluno = todosAlunos.find(a => a.id == alunoId);
+            if (aluno) {
+                atualizarInfoPagamento(aluno);
+            }
+        } else {
+            $('#info-debito-pendente').html('Selecione um aluno para ver o débito');
+            $('#pagamento-valor').val('');
+        }
+    });
+});
+
+function carregarConfiguracoes() {
+    $.ajax({
+        url: '/api/configuracoes',
+        type: 'GET',
+        success: function(config) {
+            maxFaltasConfig = parseInt(config.max_faltas?.valor || 3);
+            valorRefeicaoConfig = parseFloat(config.valor_almoco?.valor || 8.00);
+        }
+    });
+}
+
+function carregarAlunos() {
+    console.log('Carregando alunos...');
+    
+    $.ajax({
+        url: '/api/alunos',
+        type: 'GET',
+        success: function(data) {
+            console.log('Alunos carregados:', data);
+            todosAlunos = data;
+            todosAlunosOriginal = JSON.parse(JSON.stringify(data)); // Cópia profunda
+            atualizarResumo(data);
+            atualizarTabelaAlunos(data);
+            atualizarSelectAlunos(data);
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar alunos:', error);
+            $('#alunos-body').html('<tr><td colspan="8" class="text-center text-danger">Erro ao carregar alunos</td></tr>');
+            mostrarAlerta('danger', 'Erro ao carregar lista de alunos');
+        }
+    });
+}
+
+function aplicarFiltros() {
+    let alunosFiltrados = [...todosAlunosOriginal];
+    
+    // Filtro por texto (nome/matrícula)
+    const termoBusca = $('#busca-aluno').val().toLowerCase();
+    if (termoBusca) {
+        alunosFiltrados = alunosFiltrados.filter(a => 
+            a.nome.toLowerCase().includes(termoBusca) || 
+            a.matricula.toLowerCase().includes(termoBusca)
+        );
+    }
+    
+    // Filtro por status
+    const filtroStatus = $('#filtro-status').val();
+    if (filtroStatus !== 'todos') {
+        switch(filtroStatus) {
+            case 'ativos':
+                alunosFiltrados = alunosFiltrados.filter(a => !a.bloqueado);
+                break;
+            case 'bloqueados':
+                alunosFiltrados = alunosFiltrados.filter(a => a.bloqueado);
+                break;
+            case 'debito':
+                alunosFiltrados = alunosFiltrados.filter(a => a.debito > 0);
+                break;
+            case 'risco':
+                alunosFiltrados = alunosFiltrados.filter(a => {
+                    if (a.bloqueado) return false;
+                    const faltasRestantes = maxFaltasConfig - a.total_faltas;
+                    return faltasRestantes <= 1;
+                });
+                break;
+        }
+    }
+    
+    // Filtro por data da última falta
+    const dataInicio = $('#filtro-data-inicio').val();
+    const dataFim = $('#filtro-data-fim').val();
+    
+    if (dataInicio || dataFim) {
+        alunosFiltrados = alunosFiltrados.filter(a => {
+            if (!a.ultima_falta) return false;
+            
+            // Converter data do formato DD/MM/AAAA para YYYY-MM-DD
+            const partes = a.ultima_falta.split('/');
+            if (partes.length !== 3) return false;
+            
+            const dataAluno = new Date(partes[2], partes[1] - 1, partes[0]);
+            
+            if (dataInicio) {
+                const dataInicioObj = new Date(dataInicio + 'T00:00:00');
+                if (dataAluno < dataInicioObj) return false;
+            }
+            
+            if (dataFim) {
+                const dataFimObj = new Date(dataFim + 'T23:59:59');
+                if (dataAluno > dataFimObj) return false;
+            }
+            
+            return true;
+        });
+    }
+    
+    atualizarTabelaAlunos(alunosFiltrados);
+    atualizarResumo(alunosFiltrados);
+}
+
+function atualizarResumo(alunos) {
+    const total = alunos.length;
+    const bloqueados = alunos.filter(a => a.bloqueado).length;
+    const comDebito = alunos.filter(a => a.debito > 0).length;
+    const emRisco = alunos.filter(a => {
+        if (a.bloqueado) return false;
+        const faltasRestantes = maxFaltasConfig - a.total_faltas;
+        return faltasRestantes <= 1;
+    }).length;
+    
+    $('#resumo-total').text(total);
+    $('#resumo-bloqueados').text(bloqueados);
+    $('#resumo-debito').text(comDebito);
+    $('#resumo-risco').text(emRisco);
+}
+
+function atualizarTabelaAlunos(alunos) {
+    const tbody = $('#alunos-body');
+    tbody.empty();
+    
+    if (alunos.length === 0) {
+        tbody.append('<tr><td colspan="8" class="text-center">Nenhum aluno encontrado com os filtros selecionados</td></tr>');
+        return;
+    }
+    
+    alunos.forEach(function(aluno) {
+        const rowClass = aluno.bloqueado ? 'table-danger' : (aluno.debito > 0 ? 'table-warning' : '');
+        
+        // Calcular faltas restantes
+        const faltasRestantes = maxFaltasConfig - aluno.total_faltas;
+        let statusDisplay = '';
+        
+        if (aluno.bloqueado) {
+            statusDisplay = '<span class="badge bg-danger">BLOQUEADO</span>';
+        } else if (aluno.total_faltas >= maxFaltasConfig) {
+            statusDisplay = '<span class="badge bg-danger">BLOQUEADO</span>';
+        } else if (faltasRestantes <= 1) {
+            statusDisplay = '<span class="badge bg-warning text-dark">⚠️ RISCO</span>';
+        } else {
+            statusDisplay = '<span class="badge bg-success">ATIVO</span>';
+        }
+        
+        // Formatar última falta
+        let ultimaFaltaText = '-';
+        if (aluno.ultima_falta) {
+            ultimaFaltaText = `${aluno.ultima_falta} (${aluno.ultima_refeicao || '?'})`;
+        }
+        
+        tbody.append(`
+            <tr class="${rowClass}" data-id="${aluno.id}" data-matricula="${aluno.matricula}" data-nome="${aluno.nome}" data-debito="${aluno.debito}" data-faltas="${aluno.total_faltas}">
+                <td>${aluno.matricula}</td>
+                <td>${aluno.nome}</td>
+                <td>${aluno.curso || '-'}</td>
+                <td class="text-center">
+                    ${aluno.total_faltas}/${maxFaltasConfig}
+                    ${faltasRestantes <= 1 && !aluno.bloqueado && aluno.total_faltas > 0 ? ' <i class="bi bi-exclamation-triangle-fill text-warning" title="Próximo do bloqueio!"></i>' : ''}
+                </td>
+                <td class="text-center">${ultimaFaltaText}</td>
+                <td class="text-end">${aluno.debito > 0 ? formatarMoeda(aluno.debito) : '-'}</td>
+                <td class="text-center">${statusDisplay}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-info" onclick="verHistorico('${aluno.id}')" title="Ver histórico">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
+                    ${aluno.debito > 0 ? 
+                        `<button class="btn btn-sm btn-success" onclick="abrirModalPagamentoAluno('${aluno.id}')" title="Quitar débito e desbloquear">
+                            <i class="bi bi-cash-stack"></i>
+                        </button>` : ''}
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function atualizarSelectAlunos(alunos) {
+    const select = $('#pagamento-aluno');
+    select.empty();
+    select.append('<option value="">Selecione um aluno...</option>');
+    
+    alunos.filter(a => a.debito > 0).sort((a, b) => a.nome.localeCompare(b.nome)).forEach(function(aluno) {
+        select.append(`<option value="${aluno.id}" data-debito="${aluno.debito}" data-faltas="${aluno.total_faltas}">
+            ${aluno.matricula} - ${aluno.nome} (${aluno.total_faltas} faltas | Débito: ${formatarMoeda(aluno.debito)})
+        </option>`);
+    });
+    
+    if (alunos.filter(a => a.debito > 0).length === 0) {
+        select.append('<option value="" disabled>Nenhum aluno com débito</option>');
+    }
+}
+
+function atualizarInfoPagamento(aluno) {
+    const totalFaltas = aluno.faltas_pendentes ? aluno.faltas_pendentes.length : 0;
+    let totalAcumulado = 0;
+    if (aluno.faltas_pendentes) {
+        aluno.faltas_pendentes.forEach(f => totalAcumulado += f.valor);
+    }
+    
+    $('#info-debito-pendente').html(`
+        <div class="alert alert-warning">
+            <strong>DÉBITO A PAGAR - ÚLTIMA FALTA</strong><br>
+            <strong>Aluno:</strong> ${aluno.nome}<br>
+            <strong>Data da última falta:</strong> ${aluno.ultima_falta ? aluno.ultima_falta.data : 'N/A'}<br>
+            <strong>Refeição:</strong> ${aluno.ultima_falta ? aluno.ultima_falta.refeicao : 'N/A'}<br>
+            <strong>Total de faltas pendentes:</strong> ${totalFaltas}<br>
+            <strong>Total acumulado:</strong> ${formatarMoeda(totalAcumulado)}<br>
+            <hr>
+            <strong>Valor a pagar (apenas última falta):</strong> <span class="fw-bold fs-4">${formatarMoeda(aluno.debito || 0)}</span><br>
+            <small class="text-muted">Pagando este valor, TODAS as ${totalFaltas} faltas serão quitadas!</small>
+        </div>
+    `);
+    
+    $('#pagamento-valor').val((aluno.debito || 0).toFixed(2));
+}
+
+function limparBusca() {
+    $('#busca-aluno').val('');
+    $('#filtro-status').val('todos');
+    $('#filtro-data-inicio').val('');
+    $('#filtro-data-fim').val('');
+    aplicarFiltros();
+}
+
+function verHistorico(id) {
+    console.log('Buscando histórico do aluno:', id);
+    
+    $.ajax({
+        url: `/api/alunos/${id}`,
+        type: 'GET',
+        success: function(aluno) {
+            console.log('Histórico carregado:', aluno);
+            alunoSelecionado = aluno;
+            
+            // Informações do aluno
+            const infoHtml = `
+                <strong>${aluno.nome}</strong> (${aluno.matricula})<br>
+                Curso: ${aluno.curso || 'N/A'}<br>
+                Total de Faltas Pendentes: ${aluno.total_faltas || 0}<br>
+                ${aluno.bloqueado ? '<span class="badge bg-danger mt-2">BLOQUEADO</span>' : ''}
+            `;
+            $('#info-aluno').html(infoHtml);
+            
+            // ÚLTIMA FALTA (débito atual)
+            if (aluno.ultima_falta && aluno.ultima_falta.data) {
+                $('#info-ultima-falta').html(`
+                    <div class="alert alert-warning mb-0">
+                        <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> DÉBITO ATUAL - ÚLTIMA FALTA</h6>
+                        <div class="row">
+                            <div class="col-md-4"><strong>Data:</strong> ${aluno.ultima_falta.data}</div>
+                            <div class="col-md-4"><strong>Refeição:</strong> ${aluno.ultima_falta.refeicao}</div>
+                            <div class="col-md-4"><strong>Valor:</strong> ${formatarMoeda(aluno.ultima_falta.valor)}</div>
+                        </div>
+                        <hr>
+                        <p class="mb-0">Este é o valor que deve ser pago: <strong>${formatarMoeda(aluno.debito || 0)}</strong></p>
+                    </div>
+                `);
+                $('#btn-pagar-modal').show();
+            } else {
+                $('#info-ultima-falta').html(`
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill"></i> Nenhum débito pendente
+                    </div>
+                `);
+                $('#btn-pagar-modal').hide();
+            }
+            
+            // Lista de TODAS as faltas pendentes
+            if (aluno.faltas_pendentes && aluno.faltas_pendentes.length > 0) {
+                let totalAcumulado = 0;
+                aluno.faltas_pendentes.forEach(f => totalAcumulado += f.valor);
+                
+                let historicoFaltas = '<div class="mt-3"><h6>Todas as Faltas Pendentes:</h6><div class="table-responsive"><table class="table table-sm table-bordered">';
+                historicoFaltas += '<thead><tr><th>#</th><th>Data</th><th>Refeição</th><th>Valor</th></tr></thead><tbody>';
+                
+                aluno.faltas_pendentes.forEach(function(falta, index) {
+                    const isUltima = aluno.ultima_falta && 
+                                     falta.data === aluno.ultima_falta.data && 
+                                     falta.refeicao === aluno.ultima_falta.refeicao;
+                    
+                    historicoFaltas += `
+                        <tr class="${isUltima ? 'table-warning' : ''}">
+                            <td>${index + 1}</td>
+                            <td>${falta.data}</td>
+                            <td>${falta.refeicao}</td>
+                            <td class="text-end">${formatarMoeda(falta.valor)}</td>
+                        </tr>
+                    `;
+                });
+                
+                historicoFaltas += `<tr class="table-secondary">
+                    <td colspan="3" class="text-end fw-bold">TOTAL ACUMULADO:</td>
+                    <td class="text-end fw-bold">${formatarMoeda(totalAcumulado)}</td>
+                </tr>`;
+                historicoFaltas += '</tbody></table></div>';
+                
+                historicoFaltas += `
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Regra:</strong> Apesar de ter ${aluno.faltas_pendentes.length} faltas pendentes, 
+                        você precisa pagar apenas o valor da <strong>última falta</strong> (destacada em amarelo): 
+                        ${formatarMoeda(aluno.ultima_falta ? aluno.ultima_falta.valor : 0)}. 
+                        Ao pagar este valor, TODAS as faltas serão quitadas automaticamente.
+                    </div>
+                `;
+                
+                $('#info-faltas-pendentes').html(historicoFaltas);
+            } else {
+                $('#info-faltas-pendentes').html('<p class="text-muted">Nenhuma falta pendente no histórico</p>');
+            }
+            
+            // Barra de progresso (baseada no limite de faltas)
+            const maxFaltas = aluno.max_faltas || 3;
+            const totalFaltas = aluno.faltas_pendentes ? aluno.faltas_pendentes.length : 0;
+            const percentual = (totalFaltas / maxFaltas) * 100;
+            const cor = percentual >= 100 ? 'bg-danger' : (percentual >= 70 ? 'bg-warning' : 'bg-success');
+            
+            $('#progresso-faltas')
+                .css('width', percentual + '%')
+                .attr('class', `progress-bar ${cor}`)
+                .text(`${totalFaltas}/${maxFaltas}`);
+            
+            // Histórico completo de refeições
+            const tbodyRef = $('#historico-refeicoes');
+            tbodyRef.empty();
+            
+            if (aluno.historico && aluno.historico.length > 0) {
+                aluno.historico.forEach(function(item) {
+                    let statusClass = 'secondary';
+                    let statusText = item.status;
+                    
+                    if (item.status === 'presente') {
+                        statusClass = 'success';
+                    } else if (item.status === 'pendente') {
+                        statusClass = 'warning';
+                        statusText = 'Pendente';
+                    } else if (item.status === 'paga') {
+                        statusClass = 'info';
+                        statusText = 'Paga';
+                    }
+                    
+                    tbodyRef.append(`
+                        <tr>
+                            <td>${item.data}</td>
+                            <td>${item.refeicao || '-'}</td>
+                            <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                            <td class="text-end">${item.valor > 0 ? formatarMoeda(item.valor) : '-'}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                tbodyRef.append('<tr><td colspan="4" class="text-center">Nenhum registro encontrado</td></tr>');
+            }
+            
+            // Histórico de pagamentos
+            const tbodyPag = $('#historico-pagamentos');
+            tbodyPag.empty();
+            
+            if (aluno.pagamentos && aluno.pagamentos.length > 0) {
+                aluno.pagamentos.forEach(function(pag) {
+                    tbodyPag.append(`
+                        <tr>
+                            <td>${pag.data}</td>
+                            <td>${formatarMoeda(pag.valor)}</td>
+                            <td class="text-center">${pag.faltas_quitadas || 0}</td>
+                            <td>${pag.motivo || '-'}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                tbodyPag.append('<tr><td colspan="4" class="text-center">Nenhum pagamento registrado</td></tr>');
+            }
+            
+            $('#modalHistorico').modal('show');
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar histórico:', error);
+            mostrarAlerta('danger', 'Erro ao carregar histórico do aluno');
+        }
+    });
+}
+
+function abrirModalPagamento() {
+    if (todosAlunos.filter(a => a.debito > 0).length === 0) {
+        mostrarAlerta('warning', 'Não há alunos com débito pendente!');
+        return;
+    }
+    
+    $('#pagamento-aluno').val('');
+    $('#pagamento-valor').val('');
+    $('#pagamento-motivo').val('');
+    $('#info-debito-pendente').html('Selecione um aluno para ver o débito');
+    $('#modalPagamento').modal('show');
+}
+
+function abrirModalPagamentoAluno(id) {
+    $.ajax({
+        url: `/api/alunos/${id}`,
+        type: 'GET',
+        success: function(aluno) {
+            alunoSelecionado = aluno;
+            atualizarSelectAlunos(todosAlunos);
+            $('#pagamento-aluno').val(aluno.id);
+            atualizarInfoPagamento(aluno);
+            $('#pagamento-motivo').val('');
+            $('#modalPagamento').modal('show');
+        },
+        error: function() {
+            mostrarAlerta('danger', 'Erro ao carregar dados do aluno');
+        }
+    });
+}
+
+function salvarPagamento() {
+    const alunoId = $('#pagamento-aluno').val();
+    const valor = $('#pagamento-valor').val();
+    const motivo = $('#pagamento-motivo').val();
+    
+    console.log('🔍 DEBUG - Tentando registrar pagamento:');
+    console.log('  Aluno ID:', alunoId);
+    console.log('  Valor:', valor);
+    console.log('  Motivo:', motivo);
+    
+    if (!alunoId) {
+        mostrarAlerta('warning', 'Selecione um aluno!');
+        return;
+    }
+    
+    if (!valor || parseFloat(valor) <= 0) {
+        mostrarAlerta('warning', 'Valor inválido!');
+        return;
+    }
+    
+    // Buscar informações do aluno selecionado para confirmar
+    const aluno = todosAlunos.find(a => a.id == alunoId);
+    if (aluno) {
+        console.log('  Aluno selecionado:', aluno.nome);
+        console.log('  Débito atual:', aluno.debito);
+        console.log('  Total faltas:', aluno.total_faltas);
+    }
+    
+    if (!confirm(`Tem certeza que deseja quitar o débito de ${formatarMoeda(parseFloat(valor))}?\n\nIsso irá DESBLOQUEAR o aluno e ZERAR todas as faltas.`)) {
+        return;
+    }
+    
+    console.log('✅ DEBUG - Confirmação aceita, enviando requisição...');
+    
+    $.ajax({
+        url: `/api/alunos/${alunoId}/pagamento`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ 
+            valor: parseFloat(valor), 
+            motivo: motivo || 'Pagamento de débito' 
+        }),
+        success: function(response) {
+            console.log('✅ DEBUG - Resposta de sucesso:', response);
+            $('#modalPagamento').modal('hide');
+            mostrarAlerta('success', response.message);
+            carregarAlunos();
+            carregarConfiguracoes();
+            
+            if ($('#modalHistorico').is(':visible')) {
+                $('#modalHistorico').modal('hide');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ DEBUG - Erro na requisição:');
+            console.error('  Status:', status);
+            console.error('  Error:', error);
+            console.error('  Resposta:', xhr.responseText);
+            
+            let erroMsg = 'Erro ao registrar pagamento';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                erroMsg = response.message || erroMsg;
+            } catch(e) {
+                console.error('Erro ao parsear resposta:', e);
+            }
+            
+            mostrarAlerta('danger', erroMsg);
+        }
+    });
+}
+
+function registrarPagamentoModal() {
+    if (alunoSelecionado) {
+        $('#modalHistorico').modal('hide');
+        abrirModalPagamentoAluno(alunoSelecionado.id);
+    }
+}
+
+function formatarMoeda(valor) {
+    return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+}
+
+function mostrarAlerta(tipo, mensagem) {
+    const alertDiv = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    $('#alert-container').html(alertDiv);
+    
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+</script>
+{% endblock %}

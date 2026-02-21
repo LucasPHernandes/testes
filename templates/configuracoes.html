@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-gear-fill"></i> Configurações do Sistema</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <!-- Configurações Gerais -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-sliders2"></i> Configurações Gerais</h5>
+            </div>
+            <div class="card-body">
+                <form id="formConfiguracoesGerais">
+                    <div class="mb-3">
+                        <label for="max_faltas" class="form-label">Limite de Faltas para Bloqueio</label>
+                        <input type="number" class="form-control" id="max_faltas" min="1" max="20" required>
+                        <div class="form-text">Número máximo de faltas totais antes do bloqueio automático</div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Valores por Refeição -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-cup-hot-fill"></i> Valores por Refeição</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">Configure os valores para cada tipo de refeição.</p>
+                
+                <form id="formValoresRefeicoes">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="valor_lanche_manha" class="form-label">Lanche da Manhã</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" class="form-control" id="valor_lanche_manha" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="valor_almoco" class="form-label">Almoço</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" class="form-control" id="valor_almoco" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="valor_lanche_tarde" class="form-label">Lanche da Tarde</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" class="form-control" id="valor_lanche_tarde" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="valor_janta" class="form-label">Jantar</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" class="form-control" id="valor_janta" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary btn-lg" onclick="salvarConfiguracoes()">
+                <i class="bi bi-save"></i> Salvar Configurações
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="resetarConfiguracoes()">
+                <i class="bi bi-arrow-counterclockwise"></i> Restaurar Valores Padrão
+            </button>
+        </div>
+
+        <!-- Informações do Sistema -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle-fill"></i> Informações do Sistema</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Versão:</td>
+                        <td class="fw-bold">2.0</td>
+                    </tr>
+                    <tr>
+                        <td>Banco de Dados:</td>
+                        <td class="fw-bold">SQLite</td>
+                    </tr>
+                    <tr>
+                        <td>Total de Alunos:</td>
+                        <td class="fw-bold" id="info-total-alunos">-</td>
+                    </tr>
+                </table>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i>
+                    As alterações nos valores das refeições afetarão apenas novas faltas.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    console.log('Página de configurações carregada!');
+    carregarConfiguracoes();
+    carregarInfoSistema();
+});
+
+function carregarConfiguracoes() {
+    $.ajax({
+        url: '/api/configuracoes',
+        type: 'GET',
+        success: function(data) {
+            console.log('Configurações carregadas:', data);
+            
+            // Configurações gerais
+            if (data.max_faltas) {
+                $('#max_faltas').val(parseFloat(data.max_faltas) || 3);
+            }
+            
+            // Valores das refeições
+            if (data.valor_lanche_manha) {
+                $('#valor_lanche_manha').val(parseFloat(data.valor_lanche_manha).toFixed(2));
+            }
+            if (data.valor_almoco) {
+                $('#valor_almoco').val(parseFloat(data.valor_almoco).toFixed(2));
+            }
+            if (data.valor_lanche_tarde) {
+                $('#valor_lanche_tarde').val(parseFloat(data.valor_lanche_tarde).toFixed(2));
+            }
+            if (data.valor_janta) {
+                $('#valor_janta').val(parseFloat(data.valor_janta).toFixed(2));
+            }
+            if (data.valor_ceia) {
+                $('#valor_ceia').val(parseFloat(data.valor_ceia).toFixed(2));
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Erro ao carregar configurações:', error);
+            mostrarAlerta('danger', 'Erro ao carregar configurações');
+        }
+    });
+}
+
+function carregarInfoSistema() {
+    $.ajax({
+        url: '/api/estatisticas',
+        type: 'GET',
+        success: function(data) {
+            $('#info-total-alunos').text(data.total_alunos || 0);
+        },
+        error: function() {
+            $('#info-total-alunos').text('Erro');
+        }
+    });
+}
+
+function salvarConfiguracoes() {
+    // Validar campos
+    if ($('#max_faltas').val() < 1) {
+        mostrarAlerta('warning', 'Limite de faltas deve ser maior que zero!');
+        return;
+    }
+    
+    // Coletar dados
+    const configuracoes = {
+        max_faltas: $('#max_faltas').val(),
+        valor_lanche_manha: $('#valor_lanche_manha').val(),
+        valor_almoco: $('#valor_almoco').val(),
+        valor_lanche_tarde: $('#valor_lanche_tarde').val(),
+        valor_janta: $('#valor_janta').val(),
+        valor_ceia: $('#valor_ceia').val()
+    };
+    
+    console.log('Salvando configurações:', configuracoes);
+    
+    $.ajax({
+        url: '/api/configuracoes',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(configuracoes),
+        success: function(response) {
+            mostrarAlerta('success', response.message || 'Configurações salvas!');
+        },
+        error: function(xhr) {
+            console.error('Erro:', xhr.responseText);
+            mostrarAlerta('danger', 'Erro ao salvar configurações!');
+        }
+    });
+}
+
+function resetarConfiguracoes() {
+    if (confirm('Tem certeza que deseja restaurar os valores padrão?')) {
+        const valoresPadrao = {
+            max_faltas: '3',
+            valor_lanche_manha: '3.50',
+            valor_almoco: '8.00',
+            valor_lanche_tarde: '3.50',
+            valor_janta: '8.00',
+            valor_ceia: '4.00'
+        };
+        
+        $.ajax({
+            url: '/api/configuracoes',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(valoresPadrao),
+            success: function(response) {
+                mostrarAlerta('success', 'Valores padrão restaurados!');
+                carregarConfiguracoes();
+            },
+            error: function() {
+                mostrarAlerta('danger', 'Erro ao restaurar valores!');
+            }
+        });
+    }
+}
+
+function mostrarAlerta(tipo, mensagem) {
+    const alertDiv = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    $('#alert-container').html(alertDiv);
+    
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+</script>
+{% endblock %}
